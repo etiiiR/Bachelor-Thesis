@@ -74,28 +74,116 @@ class Model(object):
     def load(self, sess=None, ckpt_path=None, step=None):
         if not sess:
             raise AttributeError('TensorFlow session not provided.')
-        # print(self.vars)
-        saver = tf.train.Saver(self.vars)
+        
         save_path = os.path.join(ckpt_path, '{}.ckpt-{}'.format(self.name, step))
         
         # Check if the checkpoint exists using TensorFlow's built-in method
         if not tf.train.checkpoint_exists(save_path):
-            # Try alternative path structure
-            alt_ckpt_path = os.path.join(ckpt_path, 'mvp2m')
-            alt_save_path = os.path.join(alt_ckpt_path, '{}.ckpt-{}'.format(self.name, step))
-            if tf.train.checkpoint_exists(alt_save_path):
-                save_path = alt_save_path
+            # Try alternative names in order of preference
+            alternative_names = ['meshnet', 'meshnetmvp2m']
+            found_path = None
+            
+            for alt_name in alternative_names:
+                alt_save_path = os.path.join(ckpt_path, f'{alt_name}.ckpt-{step}')
+                if tf.train.checkpoint_exists(alt_save_path):
+                    found_path = alt_save_path
+                    break
+            
+            if found_path:
+                save_path = found_path
+                print(f"Using alternative checkpoint: {save_path}")
             else:
-                # List available checkpoints for debugging
-                print(f"Checkpoint not found at: {save_path}")
-                if os.path.exists(ckpt_path):
-                    print(f"Available files in {ckpt_path}:")
-                    for f in os.listdir(ckpt_path):
-                        print(f"  {f}")
-                raise FileNotFoundError(f"Checkpoint not found: {save_path}")
+                # Try alternative path structure (mvp2m subdirectory)
+                alt_ckpt_path = os.path.join(ckpt_path, 'mvp2m')
+                for alt_name in alternative_names:
+                    alt_save_path = os.path.join(alt_ckpt_path, f'{alt_name}.ckpt-{step}')
+                    if tf.train.checkpoint_exists(alt_save_path):
+                        save_path = alt_save_path
+                        found_path = alt_save_path
+                        print(f"Using alternative checkpoint in subdirectory: {save_path}")
+                        break
+                
+                if not found_path:
+                    # List available checkpoints for debugging
+                    print(f"Checkpoint not found at: {save_path}")
+                    if os.path.exists(ckpt_path):
+                        print(f"Available files in {ckpt_path}:")
+                        for f in os.listdir(ckpt_path):
+                            print(f"  {f}")
+                    raise FileNotFoundError(f"Checkpoint not found: {save_path}")
         
-        saver.restore(sess, save_path)
-        print('Model restored from file: {}, epoch {}'.format(save_path, step))
+        # Create flexible variable mapping that handles scope mismatches
+        print(f"Loading checkpoint from: {save_path}")
+        try:
+            # Read checkpoint to understand its structure
+            checkpoint_reader = tf.train.NewCheckpointReader(save_path)
+            checkpoint_vars = checkpoint_reader.get_variable_to_shape_map()
+            
+            print(f"Checkpoint contains {len(checkpoint_vars)} variables")
+            print("Sample checkpoint variables:")
+            for i, var_name in enumerate(sorted(checkpoint_vars.keys())[:5]):
+                print(f"  {var_name}")
+            
+            print(f"Model has {len(self.vars)} variables")
+            print("Sample model variables:")
+            sample_vars = list(self.vars)[:5]  # Convert to list first
+            for i, var in enumerate(sample_vars):
+                print(f"  {var.name}")
+            
+            # Create flexible mapping between current variables and checkpoint variables
+            var_list = {}
+            unmapped_vars = []
+            
+            for var in self.vars:
+                var_name = var.name
+                mapped = False
+                
+                # Try different scope mappings
+                possible_names = [
+                    var_name,  # exact match
+                    var_name.replace('meshnetmvp2m/', 'meshnet/'),  # mvp2m -> meshnet
+                    var_name.replace('meshnet/', 'meshnetmvp2m/'),  # meshnet -> mvp2m
+                    var_name.replace('meshnetmvp2m/', ''),  # remove mvp2m scope
+                    var_name.replace('meshnet/', ''),  # remove meshnet scope
+                ]
+                
+                for possible_name in possible_names:
+                    if possible_name in checkpoint_vars:
+                        var_list[var_name] = var  # Map variable name to variable object
+                        mapped = True
+                        break
+                
+                if not mapped:
+                    unmapped_vars.append(var_name)
+            
+            if unmapped_vars:
+                print(f"Warning: Could not map {len(unmapped_vars)} variables:")
+                for var_name in unmapped_vars[:10]:  # Show first 10
+                    print(f"  - {var_name}")
+                if len(unmapped_vars) > 10:
+                    print(f"  ... and {len(unmapped_vars) - 10} more")
+            
+            if not var_list:
+                raise ValueError("No matching variables found between checkpoint and current model")
+            
+            print(f"Successfully mapped {len(var_list)}/{len(self.vars)} variables")
+            
+            # Create saver with mapped variables and restore
+            saver = tf.train.Saver(var_list)
+            saver.restore(sess, save_path)
+            print('=> Model restored from file: {}, epoch {}'.format(save_path, step))
+            
+        except Exception as e:
+            print(f"Failed to create flexible mapping: {e}")
+            print("Attempting standard loading (this may fail)...")
+            try:
+                # Fallback to original method
+                saver = tf.train.Saver(self.vars)
+                saver.restore(sess, save_path)
+                print('=> Model restored from file: {}, epoch {}'.format(save_path, step))
+            except Exception as fallback_error:
+                print(f"Standard loading also failed: {fallback_error}")
+                raise e  # Re-raise the original error
 
 
 

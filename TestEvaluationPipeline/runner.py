@@ -60,7 +60,7 @@ COMPARE_DIR = os.path.join(os.path.dirname(CSV_SAVE_PATH), "test", "compare")
 os.makedirs(COMPARE_DIR, exist_ok=True)
 
 class MeshEvaluator:
-    def __init__(self, pred_root, gt_root, gt_root_aug, csv_save_path, plot_plots=True, plot_compare=False, debug=True, voxel_iou_on=False):
+    def __init__(self, pred_root, gt_root, gt_root_aug, csv_save_path, plot_plots=True, plot_compare=True, debug=True, voxel_iou_on=False):
         self.pred_root = pred_root
         self.gt_root = gt_root
         self.gt_root_aug = gt_root_aug
@@ -87,6 +87,8 @@ class MeshEvaluator:
             self.results = []
 
     def evaluate_mesh(self, pred_mesh_path, gt_mesh_path, fscore_thresh=0.01):
+        thresholds = [0.01, 0.025, 0.05]
+        
         metric_names = [
             "Load meshes",
             "ICP alignment",
@@ -94,7 +96,7 @@ class MeshEvaluator:
             "Sample surface points",
             "Chamfer distance",
             "Hausdorff distance",
-            "F-score",
+            "F-score (1%/5%/10%)"
             "Volume difference",
             "Surface area difference",
             "Edge length stats",
@@ -114,11 +116,8 @@ class MeshEvaluator:
             metric_bar.update(1)
 
             # 3. Normalize & convex hull
-            try:
-                mesh_pred_hull = mesh_pred_aligned.convex_hull
-            except Exception:
-                mesh_pred_hull = mesh_pred_aligned  # fallback
-            mesh_gt_hull = MeshUtils.normalize_mesh(mesh_gt.copy()).convex_hull
+            mesh_pred_hull = mesh_pred_aligned
+            mesh_gt_hull = MeshUtils.normalize_mesh(mesh_gt.copy())
             metric_bar.update(1)
 
             # 4. Sample surface points
@@ -135,8 +134,11 @@ class MeshEvaluator:
             hausdorff = MeshUtils.hausdorff_distance(pts_pred, pts_gt)
             metric_bar.update(1)
 
-            # 7. F-score
-            fscore = MeshUtils.fscore(pts_pred, pts_gt, threshold=fscore_thresh)
+            # 7. F-scores
+            # Pair-wise distances only once
+            d1 = np.min(np.linalg.norm(pts_pred[:, None] - pts_gt[None], axis=-1), axis=1)
+            d2 = np.min(np.linalg.norm(pts_gt[:, None] - pts_pred[None], axis=-1), axis=1)
+            fscore_1, fscore_2_5, fscore_5 = MeshUtils.fscore_multi(d1, d2, thresholds)
             metric_bar.update(1)
 
             # 8. Volume difference
@@ -180,11 +182,26 @@ class MeshEvaluator:
             metric_bar.update(1)
 
             results = (
-                chamfer, hausdorff, fscore, mesh_pred_hull, mesh_gt_hull,
-                vol_diff, area_diff,
-                edge_mean_pred, edge_std_pred, edge_mean_gt, edge_std_gt,
-                voxel_iou, euler_pred, euler_gt, normal_consistency, None
+                chamfer, 
+                hausdorff, 
+                fscore_1,
+                fscore_2_5,
+                fscore_5,
+                mesh_pred_hull, 
+                mesh_gt_hull,
+                vol_diff, 
+                area_diff,
+                edge_mean_pred, 
+                edge_std_pred, 
+                edge_mean_gt, 
+                edge_std_gt,
+                voxel_iou, 
+                euler_pred, 
+                euler_gt, 
+                normal_consistency,
+                None
             )
+            
         return results
 
 
@@ -234,28 +251,46 @@ class MeshEvaluator:
         ]
 
     def plot_meshes(self, mesh_pred, mesh_gt, model_name, fname):
-        # Sample points from both meshes (convex hull)
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+
+        # Sample points from both meshes
         pts_pred, _ = trimesh.sample.sample_surface(mesh_pred, 5000)
         pts_gt, _ = trimesh.sample.sample_surface(mesh_gt, 5000)
 
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection='3d')
+        # Define views: (azimuth, elevation)
+        views = {
+            "front": (0, 0),
+            "back": (180, 0),
+            "left": (90, 0),
+            "right": (-90, 0),
+            "top": (0, 90),
+            "bottom": (0, -90),
+            "isometric": (45, 35)
+        }
 
-        # Plot predicted point cloud (aligned, deepskyblue)
-        ax.scatter(pts_pred[:, 0], pts_pred[:, 1], pts_pred[:, 2], c='deepskyblue', s=1, label='Prediction')
+        fig, axs = plt.subplots(1, len(views), figsize=(4 * len(views), 4), subplot_kw={'projection': '3d'})
 
-        # Plot GT point cloud (orange)
-        ax.scatter(pts_gt[:, 0], pts_gt[:, 1], pts_gt[:, 2], c='orange', s=1, label='Ground Truth')
+        if len(views) == 1:
+            axs = [axs]
 
-        ax.set_title('Prediction (blue) vs Ground Truth (orange) - Overlapped')
-        ax.set_axis_off()
-        ax.legend(loc='upper right')
+        for ax, (name, (azim, elev)) in zip(axs, views.items()):
+            ax.scatter(pts_gt[:, 0], pts_gt[:, 1], pts_gt[:, 2], c='orange', s=1, label='GT')
+            ax.scatter(pts_pred[:, 0], pts_pred[:, 1], pts_pred[:, 2], c='deepskyblue', s=1, label='Prediction')
+            ax.view_init(elev=elev, azim=azim)
+            ax.set_title(name)
+            ax.set_axis_off()
+
+        # Add legend only once (shared legend)
+        handles, labels = axs[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper center', ncol=2, fontsize=12)
 
         plt.tight_layout()
-        plot_path = os.path.join(PLOTS_DIR, f"{model_name}_{os.path.splitext(fname)[0]}_pc.png")
+        plot_path = os.path.join(PLOTS_DIR, f"{model_name}_{os.path.splitext(fname)[0]}_multi_view_pc.png")
         plt.savefig(plot_path, bbox_inches='tight', pad_inches=0.05)
         plt.close(fig)
         return plot_path
+
 
     def plot_meshes_compare(self, mesh_pred, mesh_gt, model_name, fname):
         # Plot the original (untouched) meshes as surfaces, not point clouds
@@ -327,7 +362,7 @@ class MeshEvaluator:
                         }
                     else:
                         (
-                            chamfer, hausdorff, fscore, mesh_pred_hull, mesh_gt_hull,
+                            chamfer, hausdorff, f1, f2_5, f5, mesh_pred_hull, mesh_gt_hull,
                             vol_diff, area_diff,
                             edge_mean_pred, edge_std_pred, edge_mean_gt, edge_std_gt,
                             voxel_iou, euler_pred, euler_gt, normal_consistency, voxel_plot_path
@@ -352,7 +387,9 @@ class MeshEvaluator:
                             "gt_path": gt_mesh_path,
                             "chamfer": chamfer,
                             "hausdorff": hausdorff,
-                            "fscore": fscore,
+                            "fscore_1": f1,
+                            "fscore_2_5": f2_5,
+                            "fscore_5": f5,
                             "augmented": use_augmented,
                             "plot_path": plot_path,
                             "compare_path": compare_path,
@@ -368,7 +405,8 @@ class MeshEvaluator:
                             "normal_consistency": normal_consistency,
                             "voxel_plot_path": voxel_plot_path
                         }
-                    tqdm.write(f"{model_name}/{fname}: {result['chamfer']}, {result['hausdorff']}, {result['fscore']}")
+                    tqdm.write(f"{model_name}/{fname}: chamfer={chamfer:.4g}, "
+                               f"haus={hausdorff:.4g}, F1={f1:.3f}, F2.5={f2_5:.3f}, F5={f5:.3f}")
                     self.results.append(result)
                     self.done_set.add(pred_mesh_path)
                     self.save_results(incremental=True)

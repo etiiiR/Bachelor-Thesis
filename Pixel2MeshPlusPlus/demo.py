@@ -31,7 +31,7 @@ def main(cfg):
     num_supports = 2
     placeholders = {
         'features': tf.placeholder(tf.float32, shape=(None, 3), name='features'),
-        'img_inp': tf.placeholder(tf.float32, shape=(3, 224, 224, 3), name='img_inp'),
+        'img_inp': tf.placeholder(tf.float32, shape=(2, 224, 224, 3), name='img_inp'),
         'labels': tf.placeholder(tf.float32, shape=(None, 6), name='labels'),
         'support1': [tf.sparse_placeholder(tf.float32) for _ in range(num_supports)],
         'support2': [tf.sparse_placeholder(tf.float32) for _ in range(num_supports)],
@@ -60,16 +60,18 @@ def main(cfg):
     #     print('==> make predict_dir {}'.format(predict_dir))
     # -------------------------------------------------------------------
     print('=> build model')
-    # Define model
-    model1 = MVP2MNet(placeholders, logging=True, args=cfg)
-    model2 = P2MPPNet(placeholders, logging=True, args=cfg)
+    # Define models with unique variable scopes to avoid conflicts
+    with tf.variable_scope('mvp2m_stage'):
+        model1 = MVP2MNet(placeholders, logging=True, args=cfg)
+    
+    with tf.variable_scope('p2mpp_stage'):
+        model2 = P2MPPNet(placeholders, logging=True, args=cfg)
     # ---------------------------------------------------------------
     print('=> load data')
-    demo_img_list = ['data/demo/plane1.png',
-                     'data/demo/plane2.png',
-                     'data/demo/plane3.png']
+    demo_img_list = ['/demo2/000000.png',
+                     'demo2/000001.png',]
     img_all_view = load_demo_image(demo_img_list)
-    cameras = np.loadtxt('data/demo/cameras.txt')
+    cameras = np.loadtxt('demo2/cameras.txt')
     print('img_all_view shape:', img_all_view.shape, 'min:', np.min(img_all_view), 'max:', np.max(img_all_view))
     print('cameras shape:', cameras.shape, 'min:', np.min(cameras), 'max:', np.max(cameras))
     # data = DataFetcher(file_list=cfg.test_file_path, data_root=cfg.test_data_path, image_root=cfg.test_image_path, is_val=True)
@@ -85,8 +87,8 @@ def main(cfg):
     # sess2 = tf.Session(config=sesscfg)
     # sess2.run(tf.global_variables_initializer())
     # ---------------------------------------------------------------
-    model1.load(sess=sess, ckpt_path=model1_dir, step=50)
-    model2.load(sess=sess, ckpt_path=model2_dir, step=10)
+    model1.load(sess=sess, ckpt_path=model1_dir, step=200)
+    model2.load(sess=sess, ckpt_path=model2_dir, step=30)
     # exit(0)
     # ---------------------------------------------------------------
     # Load init ellipsoid and info about vertices and edges

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # --- User settings ---
 CHECKPOINTS_ROOT = r"C:/Users/super/Documents/Github/sequoia/Pixel_Nerf/checkpoints"
 CONF_MAP_PATH = r"./checkpoint_conf_map.json"
-DATADIR = r"C:\Users\super\Documents\Github\sequoia\data\pollen_augmented"
+DATADIR = r"C:\Users\super\Documents\Github\shapenet_renderer\holo"
 OUTPUT_ROOT = r"C:/Users/super/Documents/Github/sequoia/Pixel_Nerf/reconstructed"
 PIXELNERF_SCRIPT = r"C:/Users/super/Documents/Github/sequoia/Pixel_Nerf/MeshGenerator/src/pixelnerf.py"
 
@@ -18,7 +18,7 @@ load_dotenv(dotenv_path)
 # --- User settings from .env ---
 CHECKPOINTS_ROOT = os.getenv("CHECKPOINTS_ROOT").strip("'")
 CONF_MAP_PATH = os.getenv("CONF_MAP_PATH").strip("'")
-DATADIR = os.getenv("DATADIR").strip("'")
+#DATADIR = os.getenv("DATADIR").strip("'")
 OUTPUT_ROOT = os.getenv("OUTPUT_ROOT").strip("'")
 PIXELNERF_SCRIPT = os.getenv("PIXELNERF_SCRIPT").strip("'")
 
@@ -57,14 +57,22 @@ for checkpoint_name in tqdm(checkpoint_folders, desc="Checkpoints"):
         "--output", output_dir,
         "--source", f'"{source}"',
         "--gen_meshes",
+        "--meshes_only",
         "--include_src",
         "--write_compare",
         "--conf", conf_path,
-        "--datadir", DATADIR,
         "--checkpoints_path", checkpoint_path_arg
     ]
 
     print(f"\n=== Running checkpoint: {checkpoint_name} ===")
     print("Command:", ' '.join(cmd))
-    result = subprocess.run(' '.join(cmd), shell=True)
-    print(f"Finished {checkpoint_name} with return code {result.returncode}")
+    
+    try:
+        result = subprocess.run(' '.join(cmd), shell=True)
+        print(f"Finished {checkpoint_name} with return code {result.returncode}")
+        
+        if result.returncode != 0:
+            print(f"Warning: {checkpoint_name} failed with return code {result.returncode}")
+    except Exception as e:
+        print(f"Error running checkpoint {checkpoint_name}: {e}")
+        continue

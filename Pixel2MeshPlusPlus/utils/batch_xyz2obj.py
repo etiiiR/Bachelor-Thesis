@@ -108,7 +108,7 @@ def main():
     input_dirs = sys.argv[1:]
     
     # Output base directory
-    output_base_dir = "pixel2meshplusplus/predictions"
+    output_base_dir = "pixel2meshplusplus/output"
     
     # Create base output directory
     os.makedirs(output_base_dir, exist_ok=True)

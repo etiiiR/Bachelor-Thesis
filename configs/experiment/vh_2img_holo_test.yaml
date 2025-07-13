@@ -1,0 +1,7 @@
+# @package _global_
+
+name: vh_2img_holo_test
+
+defaults:
+  - override /model: visual_hull
+  - override /data: holo

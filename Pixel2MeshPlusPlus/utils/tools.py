@@ -120,7 +120,8 @@ def camera_trans_inv(camera_metadata, xyz):
 
 
 def load_demo_image(demo_image_list):
-    imgs = np.zeros((3, 224, 224, 3))
+    num_images = len(demo_image_list)
+    imgs = np.zeros((num_images, 224, 224, 3))
     for idx, demo_img_path in enumerate(demo_image_list):
         img = cv2.imread(demo_img_path, cv2.IMREAD_UNCHANGED)
         if img.shape[2] == 4:

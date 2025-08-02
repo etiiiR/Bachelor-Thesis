@@ -16,12 +16,12 @@ def create_mesh_with_wireframe(mesh_path):
             print(f"Warnung: {mesh_path} enthält keine Vertices")
             return None, None
         
-        # Setze eine neutrale graue Farbe für das Mesh
-        mesh.paint_uniform_color([0.8, 0.8, 0.8])  # Hellgrau
-        
+        # Setze die Mesh-Farbe auf #1b669b (RGB: 27, 102, 155)
+        mesh.paint_uniform_color([27/255, 102/255, 155/255])  # #1b669b
+
         # Erstelle Wireframe aus dem Mesh
         wireframe = o3d.geometry.LineSet.create_from_triangle_mesh(mesh)
-        wireframe.paint_uniform_color([0.0, 0.3, 1.0])  # Blaue Linien
+        wireframe.paint_uniform_color([1.0, 1.0, 1.0])  # Weiß
         
         # Berechne Normalen für bessere Beleuchtung
         mesh.compute_vertex_normals()
@@ -49,7 +49,7 @@ def render_view(mesh, wireframe, view_name, output_path):
         render_option = vis.get_render_option()
         render_option.background_color = np.array([1.0, 1.0, 1.0])  # Weißer Hintergrund
         render_option.mesh_show_back_face = True
-        render_option.line_width = 3.0  # Dickere Wireframe-Linien
+        render_option.line_width = 10.0  # Noch dickere Wireframe-Linien
         
         # Einfache Kamera-Einstellung
         ctr = vis.get_view_control()

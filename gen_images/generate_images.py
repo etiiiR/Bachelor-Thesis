@@ -93,7 +93,7 @@ def process_and_resize_image(img_path: str, target_size: Tuple[int, int],
     normalized_img = Image.fromarray(arr.astype(np.uint8), mode='L')
     
     # Entferne Ripples
-    ripple_remover = RemoveRipples(method='otsu', max_scale=1.5)
+    ripple_remover = RemoveRipples(method='otsu', max_scale=5)
     processed_img = ripple_remover(normalized_img)
     
     # Konvertiere zu RGB falls gewünscht

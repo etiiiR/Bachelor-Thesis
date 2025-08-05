@@ -1,6 +1,0 @@
-
-
-embedding: null # [null, index, pose, ray]
-encode_embedding: null # [null, positional, fourier]
-dimension: 0 # int
-method: null # [concat, film]

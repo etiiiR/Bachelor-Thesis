@@ -48,14 +48,14 @@ def normalize_mesh(mesh):
 def get_camera_positions(num_views=8, distance=2.5):
     positions = []
     angles = [
+        (0, 30),
+        (90, 30),
+        (180, 30),
+        (270, 30),
         (45, 30),
-        (-45, 30),
         (135, 30),
-        (-135, 30),
-        (45, -30),
-        (-45, -30),
-        (135, -30),
-        (-135, -30),
+        (225, 30),
+        (315, 30),
     ]
     for i in range(num_views):
         azimuth, elevation = angles[i]
@@ -64,7 +64,7 @@ def get_camera_positions(num_views=8, distance=2.5):
         x = distance * math.cos(el_rad) * math.sin(az_rad)
         y = distance * math.sin(el_rad)
         z = distance * math.cos(el_rad) * math.cos(az_rad)
-        positions.append(((x, y, z), (azimuth, elevation)))
+        positions.append(((x, y, z),
     return positions
 
 

@@ -12,6 +12,7 @@ image_transforms:
       adaptive_blocksize: 51
       adaptive_C: 2
       morph_ksize: 5
+      max_scale: 5
 
     - _target_: torchvision.transforms.ToTensor
 

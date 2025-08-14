@@ -1,4 +1,7 @@
-<img width="1003" height="583" alt="bat_preprocessing" alt="Pipeline Overview" src="https://github.com/user-attachments/assets/032f7d71-304f-4faa-a22a-4e4da7d81605" />
+<img src="https://github.com/user-attachments/assets/032f7d71-304f-4faa-a22a-4e4da7d81605"
+     alt="Pipeline Overview"
+  width="1003" height="583"
+     style="background-color:white; padding:5px;" />
 
 > Dataset / Reconstructions / Evaluation Artifacts:
 > https://drive.switch.ch/index.php/s/WNluDrafwA0cZp1

@@ -1,7 +1,5 @@
-<img src="https://github.com/user-attachments/assets/032f7d71-304f-4faa-a22a-4e4da7d81605"
-     alt="Pipeline Overview"
-  width="1003" height="583"
-     style="background-color:white; padding:5px;" />
+<img  width="1003" height="583" alt="preprocessing" src="https://github.com/user-attachments/assets/1afca5b3-62e2-4a58-a895-fe3ba017e46a" />
+
 
 > Dataset / Reconstructions / Evaluation Artifacts:
 > https://drive.switch.ch/index.php/s/WNluDrafwA0cZp1

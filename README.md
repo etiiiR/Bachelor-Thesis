@@ -1,3 +1,7 @@
+<img width="878" height="1002" alt="image" src="https://github.com/user-attachments/assets/4de4dd63-9f89-48bb-ad88-fed4609f9087" />
+
+
+
 <img  width="1003" height="583" alt="preprocessing" src="https://github.com/user-attachments/assets/1afca5b3-62e2-4a58-a895-fe3ba017e46a" />
 
 
